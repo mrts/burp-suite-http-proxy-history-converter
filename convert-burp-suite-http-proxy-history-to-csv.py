@@ -9,10 +9,16 @@ import io
 import argparse
 import cgi
 import base64
+
 import xmltodict
+from backports import csv
+
+
+_g_csv_delimiter = ','
 
 def main():
     args = parse_arguments()
+    set_csv_delimiter(args.csv_delimiter)
     format_handler = FORMATS[args.format](args.filename)
     http_history = parse_http_history(args.filename)
     convert_to_output_file(http_history, format_handler)
@@ -22,10 +28,12 @@ def parse_arguments():
     parser.add_argument('filename', help='Burp Suite HTTP proxy history file')
     parser.add_argument('--format', default='html', choices=FORMATS.keys(),
             help='output format, default: html')
+    parser.add_argument('--csv-delimiter', choices=(',', ';'),
+            help='CSV delimiter, default: ,')
     return parser.parse_args()
 
 def convert_to_output_file(http_history, format_handler):
-    with io.open(format_handler.filename, 'w', encoding='utf-8') as output_file:
+    with io.open(format_handler.filename, 'w', encoding='utf-8', newline='') as output_file:
         format_handler.set_output_file(output_file)
         format_handler.header_prefix()
         format_handler.header_column('Time')
@@ -69,15 +77,17 @@ def parse_http_history(filename):
         return xmltodict.parse(f)
 
 def base64decode(line):
-    return cgi.escape(base64.b64decode(line).decode('UTF-8'))
+    return base64.b64decode(line).decode('UTF-8')
+
+def set_csv_delimiter(csv_delimiter):
+    if csv_delimiter:
+        global _g_csv_delimiter
+        _g_csv_delimiter = unicode(csv_delimiter)
 
 
 class FormatHandlerBase(object):
     def __init__(self, filename):
         self.filename = filename + self.FILENAME_SUFFIX
-
-    def set_output_file(self, output_file):
-        self.output_file = output_file
 
 
 class HtmlFormatHandler(FormatHandlerBase):
@@ -103,7 +113,13 @@ class HtmlFormatHandler(FormatHandlerBase):
     </head>
     <body>
         <table><thead><tr>
-    '''
+'''
+    FOOTER = '''</tbody></table>
+</body></html>
+'''
+
+    def set_output_file(self, output_file):
+        self.output_file = output_file
 
     def header_prefix(self):
         print(self.HEADER,
@@ -126,17 +142,54 @@ class HtmlFormatHandler(FormatHandlerBase):
     def row_column(self, content, encoded=False):
         template = '<td>%s</td>' if not encoded else '<td><pre>%s</pre></td>'
         if encoded:
-            content = base64decode(content)
+            content = cgi.escape(base64decode(content))
         print(template % content,
                 file=self.output_file)
 
     def footer(self):
-        print('</tbody></table></body></html>',
+        print(self.FOOTER,
                 file=self.output_file)
+
+
+# note that total number of characters that an Excel cell can contain is 32,760
+class CsvFormatHandler(FormatHandlerBase):
+    FILENAME_SUFFIX = '.csv'
+
+    def set_output_file(self, output_file):
+        self.writer = csv.writer(output_file, dialect='excel',
+                delimiter=_g_csv_delimiter)
+        self.header = []
+
+    def header_prefix(self):
+        pass
+
+    def header_suffix(self):
+        self.writer.writerow(self.header)
+
+    def header_column(self, column_name):
+        self.header.append(column_name)
+
+    def row_prefix(self):
+        self.row = []
+
+    def row_suffix(self):
+        self.writer.writerow(self.row)
+
+    def row_column(self, content, encoded=False):
+        if content and encoded:
+            content = base64decode(content)
+        # total number of characters that an Excel cell can contain is 32,760
+        if content and len(content) > 32760:
+            content = content[:32744] + '..[TRUNCATED!]'
+        self.row.append(content)
+
+    def footer(self):
+        pass
 
 
 FORMATS = {
     'html': HtmlFormatHandler,
+    'csv': CsvFormatHandler,
 }
 
 
