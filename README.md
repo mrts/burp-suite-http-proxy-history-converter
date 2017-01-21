@@ -2,6 +2,13 @@
 
 Python script that converts Burp Suite HTTP proxy history files to HTML or CSV.
 
+The history file can be exported from Burp Suite by opening *Proxy > HTTP
+History*, selecting relevant records, right-clicking and choosing *Save items*.
+
+
+Example history file is included in
+[example/burp-http-history.xml](example/burp-http-history.xml).
+
 ## Usage
 
 Download the script and install requirements:
@@ -33,13 +40,13 @@ Usage overview:
 Convert Burp Suite HTTP proxy history file to HTML, output will be next to input
 file with `.html` extension:
 
-    python convert-burp-suite-http-proxy-history-to-csv.py /path/to/burp_http_history.xml
+    python convert-burp-suite-http-proxy-history-to-csv.py example/burp-http-history.xml
 
 Convert Burp Suite HTTP proxy history file to CSV using `;` as delimiter, output
 will be next to input file with `.csv` extension:
 
-    python convert-burp-suite-http-proxy-history-to-csv.py /path/to/burp_http_history.xml \
+    python convert-burp-suite-http-proxy-history-to-csv.py example/burp-http-history.xml \
         --format csv --csv-delimiter ';'
 
 **Note that CSV file fields are truncated to 32760 characters as that is the
-total number of characters that an Excel cell can contiain.**
+total number of characters that an Excel cell can contain.**

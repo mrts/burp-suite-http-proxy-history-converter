@@ -102,6 +102,8 @@ class HtmlFormatHandler(FormatHandlerBase):
     }
     table, th, td {
         border: 1px solid black;
+        font-family: Arial, sans-serif;
+        padding: 5px;
     }
     th {
         text-align: left;
