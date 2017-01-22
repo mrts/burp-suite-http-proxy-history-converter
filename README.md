@@ -9,6 +9,10 @@ History*, selecting relevant records, right-clicking and choosing *Save items*.
 Example history file is included in
 [example/burp-http-history.xml](example/burp-http-history.xml).
 
+Besides this converter, a Java-based [standalone Burp Suite HTTP history
+viewer](https://github.com/mrts/burp-suite-http-proxy-history-viewer) is also
+available.
+
 ## Usage
 
 Download the script and install requirements:
