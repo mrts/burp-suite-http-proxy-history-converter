@@ -63,11 +63,17 @@ def convert_to_output_file(http_history, format_handler):
             format_handler.row_column(line['method'])
             format_handler.row_column(line['path'])
             format_handler.row_column(line['extension'])
-            format_handler.row_column(line['request']['#text'], encoded=True)
+            if '#text' in line['request']:
+                format_handler.row_column(line['request']['#text'], encoded=True)
+            else:
+                format_handler.row_column("None")
             format_handler.row_column(line['status'])
             format_handler.row_column(line['responselength'])
             format_handler.row_column(line['mimetype'])
-            format_handler.row_column(line['response']['#text'], encoded=True)
+            if '#text' in line['response']:
+                format_handler.row_column(line['response']['#text'], encoded=True)
+            else:
+                format_handler.row_column("None")
             format_handler.row_column(line['comment'])
             format_handler.row_suffix()
         format_handler.footer()
