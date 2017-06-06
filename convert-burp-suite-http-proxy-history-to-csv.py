@@ -77,7 +77,11 @@ def parse_http_history(filename):
         return xmltodict.parse(f)
 
 def base64decode(line):
-    return base64.b64decode(line).decode('UTF-8')
+    try:
+        decoded = base64.b64decode(line).decode('UTF-8')
+        return decoded
+    except:
+        return "[corrupt]"
 
 def set_csv_delimiter(csv_delimiter):
     if csv_delimiter:
