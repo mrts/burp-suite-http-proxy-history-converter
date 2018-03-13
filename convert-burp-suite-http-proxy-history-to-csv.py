@@ -79,7 +79,7 @@ def convert_to_output_file(http_history, format_handler):
         format_handler.footer()
 
 def parse_http_history(filename):
-    with open(filename) as f:
+    with open(filename, 'rb') as f:
         return xmltodict.parse(f)
 
 def base64decode(line):
