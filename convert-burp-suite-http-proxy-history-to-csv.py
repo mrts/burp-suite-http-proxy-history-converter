@@ -208,4 +208,7 @@ FORMATS = {
 }
 
 if __name__ == '__main__':
+    # In python 3, unicode is renamed to str
+    if sys.version_info[0] >= 3:
+      unicode = str
     main()
