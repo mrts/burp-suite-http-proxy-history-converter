@@ -8,10 +8,12 @@ import sys
 import io
 import argparse
 import html
+import json
 import base64
 
 import xmltodict
 from backports import csv
+from http import client as httpClient
 
 _g_csv_delimiter = ','
 
@@ -201,10 +203,88 @@ class CsvFormatHandler(FormatHandlerBase):
     def footer(self):
         pass
 
+class JsonFileFormatHandler(FormatHandlerBase):
+  FILENAME_SUFFIX = '.json'
+  """
+  JsonFileFormatHandler is used to split the capture into multiple json files for each request/response.
+  3 files are generated: 
+      - one that holds the captured meta-information (named timestamp-index.json)
+      - one that holds the request (named timestmap-index.req.json)
+      - one that holds the response (named timestamp-index.res.json)
+  All files are pretty-printed json files with sorted keys so that it's easy to jump between files and pick up changes.
+  """
+  def set_output_file(self, output_file):
+    self.baseFile = output_file.name[:-4]
+    self.rowIndex = 0
+
+  def header_prefix(self):
+      self.header = []
+    
+  def header_suffix(self):
+      pass
+    
+  def header_column(self, column_name):
+      self.header.append(column_name)
+    
+  def row_prefix(self):
+      self.fileData = {"index": self.rowIndex}
+      self.colIndex = 0
+    
+  def jsonFromHttp(self, string):
+    """
+    Parse a request or response-string and return a json representation.
+    First line of the string is either a HTTP-Request line (GET /foo) or a response (HTTP1/1 200 Success).
+    This line is reported as "method" and "url" (for both requests and responses)
+    The actual body is provided via "body" key.
+    """
+    if not string:
+      return {}
+    requestLine, rest = string.split('\r\n', 1)
+    # split the first line, it cannot be parsed by the parse_headers() function
+    method, url = requestLine.split(" ",1)
+    byteStream = io.BytesIO(rest.encode("utf-8"))
+    message = httpClient.parse_headers(byteStream)
+    body = byteStream.read().decode("utf-8")
+    res = {"method":method, "url": url}
+    for key in message.keys():
+      res[key] = message[key]
+    res["body"] = body
+    return res
+  
+  def writeJsonFile(self, fileName, dictionary):
+    with open(fileName,"w") as f:
+        f.write(json.dumps(dictionary, sort_keys=True, indent=1))
+
+  def row_suffix(self):
+    timePart = self.fileData['Time']
+    timePart = timePart.replace(":", "")
+    timePart = timePart.replace(" ", "_")
+    self.writeJsonFile(F"{self.baseFile}_{timePart}_{self.rowIndex}.json",self.fileData)
+    self.writeJsonFile(F"{self.baseFile}_{timePart}_{self.rowIndex}.req.json",self.jsonFromHttp(self.request))
+    self.writeJsonFile(F"{self.baseFile}_{timePart}_{self.rowIndex}.res.json",self.jsonFromHttp(self.response))
+    self.rowIndex += 1
+
+  def row_column(self, content, encoded=False):
+      if content and encoded:
+          content = base64decode(content)
+      colName = self.header[self.colIndex]
+      if colName == "Request":
+        self.request = content
+      elif colName == "Response":
+        self.response = content
+      else:
+        self.fileData[colName] = content
+      self.colIndex += 1
+        
+    
+  def footer(self):
+      pass
+    
 
 FORMATS = {
     'html': HtmlFormatHandler,
     'csv': CsvFormatHandler,
+    'json': JsonFileFormatHandler,
 }
 
 if __name__ == '__main__':
@@ -212,3 +292,4 @@ if __name__ == '__main__':
     if sys.version_info[0] >= 3:
       unicode = str
     main()
+  
